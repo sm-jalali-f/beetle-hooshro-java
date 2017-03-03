@@ -51,7 +51,7 @@ public class Beetle extends Entity {
         this.sick = sick;
     }
 
-    int getTeam() {
+    public int getTeam() {
         return team;
     }
 
@@ -61,14 +61,6 @@ public class Beetle extends Entity {
 
     public boolean is_sick() {
         return (sick == 1);
-    }
-
-    public int getRow() {
-        return this.getX();
-    }
-
-    public int getColumn() {
-        return this.getY();
     }
 
     public Direction getDirection() {

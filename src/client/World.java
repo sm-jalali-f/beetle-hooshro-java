@@ -13,11 +13,11 @@ public interface World {
     /**
      * Changing the strategy of the beetles with the given antenna type
      *
-     * @param color Antenna type of the beetle (0 for single antenna and 1 for double antenna)
+     * @param type beetle's type
      * @param right Condition of the top-right neighbour
      * @param front Condition of the front
      * @param left Condition of the top-left neighbour
-     * @param strategy The command given to the beetle (0 for turning right, 1 for going forward and 2 for turning left
+     * @param move The command given to the beetle
      */
 
     void changeStrategy(BeetleType type, CellState right, CellState front, CellState left, Move move);
@@ -25,16 +25,16 @@ public interface World {
     /**
      * Give command to a specific Beetle with the given id
      *
-     * @param id Beetle id
-     * @param s The command given to the beetle(same as the previous method)
+     * @param beetle The chosen beetle
+     * @param move The command given to the beetle
      */
     public void deterministicMove(Beetle beetle, Move move);
 
     /**
      * Changes antenna type of the given beetle
      *
-     * @param id Beetle id
-     * @param c Antenna type
+     * @param beetle The chosen beetle
+     * @param newType Beetle type
      */
     public void changeType(Beetle beetle, BeetleType newType);
 

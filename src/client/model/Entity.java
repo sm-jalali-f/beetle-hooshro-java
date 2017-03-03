@@ -4,12 +4,6 @@ public class Entity {
     private int id = -1;
     private EntityType entityType;
     private Cell cell;
-    /*
-     * These two fields are only used when we are
-     * passing an Entity object to user
-     */
-    private int x;
-    private int y;
 
     Entity() {
     }
@@ -29,22 +23,6 @@ public class Entity {
 
     void setId(int id) {
         this.id = id;
-    }
-
-    int getX() {
-        return x;
-    }
-
-    void setX(int x) {
-        this.x = x;
-    }
-
-    int getY() {
-        return y;
-    }
-
-    void setY(int y) {
-        this.y = y;
     }
 
     void setCell(Cell cell) {

@@ -25,7 +25,7 @@ public class Controller {
     private String token;
     private long retryDelay;
 
-    // AI (participant's) class
+    // FirstAi (participant's) class
     private AI ai;
 
     // Game model
@@ -77,7 +77,7 @@ public class Controller {
 
     /**
      * Handles incoming message. This method will be called from
-     * {@link client.Network} when a new message is received.
+     * {@link Network} when a new message is received.
      *
      * @param msg incoming message
      */
@@ -131,7 +131,7 @@ public class Controller {
     }
 
     /**
-     * Starts {@link AI#doTurn} with turn timeout.
+     * Starts {@link FirstAi#doTurn} with turn timeout.
      */
     private void doTurn() {
         new Thread() {
