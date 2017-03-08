@@ -128,7 +128,7 @@ public class Map
         this.beetles = beetles;
     }
 
-    public void setItems(Cell[][] items)
+    void setItems(Cell[][] items)
     {
         this.items = items;
     }

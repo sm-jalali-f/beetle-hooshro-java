@@ -724,9 +724,8 @@ public class Game implements World
         this.constants.setDisobeyNum((int) constants.get(18).getAsDouble());
         this.constants.setFoodValidTime((int) constants.get(19).getAsDouble());
         this.constants.setTrashValidTime((int) constants.get(20).getAsDouble());
-        if (constants.size() == 22)
-        {
-            this.constants.setTotalTurns((int) constants.get(21).getAsDouble());
-        }
+        this.constants.setTotalTurns((int) constants.get(21).getAsDouble());
+        this.constants.setDeterministicMoveLimit((int) constants.get(22).getAsDouble());
+        this.constants.setChangeTypeLimit((int) constants.get(23).getAsDouble());
     }
 }

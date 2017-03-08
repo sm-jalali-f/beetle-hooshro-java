@@ -26,6 +26,8 @@ public class Constants {
     private int foodValidTime;
     private int trashValidTime;
     private int totalTurns;
+    private int deterministicMoveLimit;
+    private int changeTypeLimit;
 
 
     public double getFoodProb() {
@@ -202,5 +204,25 @@ public class Constants {
 
     void setTotalTurns(int totalTurns) {
         this.totalTurns = totalTurns;
+    }
+
+    public int getDeterministicMoveLimit()
+    {
+        return deterministicMoveLimit;
+    }
+
+    void setDeterministicMoveLimit(int deterministicMoveLimit)
+    {
+        this.deterministicMoveLimit = deterministicMoveLimit;
+    }
+
+    public int getChangeTypeLimit()
+    {
+        return changeTypeLimit;
+    }
+
+    void setChangeTypeLimit(int changeTypeLimit)
+    {
+        this.changeTypeLimit = changeTypeLimit;
     }
 }

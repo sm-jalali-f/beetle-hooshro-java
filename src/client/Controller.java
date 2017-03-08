@@ -25,7 +25,7 @@ public class Controller {
     private String token;
     private long retryDelay;
 
-    // FirstAi (participant's) class
+    // AI2 (participant's) class
     private AI ai;
 
     // Game model
@@ -71,6 +71,7 @@ public class Controller {
             }
             network.terminate();
         } catch (Exception e) {
+            e.printStackTrace();
             Log.e(TAG, "Can not start the client.", e);
         }
     }
@@ -131,7 +132,7 @@ public class Controller {
     }
 
     /**
-     * Starts {@link FirstAi#doTurn} with turn timeout.
+     * Starts {@link AI2#doTurn} with turn timeout.
      */
     private void doTurn() {
         new Thread() {

@@ -1,6 +1,5 @@
 package client;
 
-import client.World;
 import client.freezAi.Utility;
 import client.freezAi.models.*;
 import client.model.*;
@@ -14,22 +13,25 @@ public class AI {
 
     int teamId;
     HashMap<Integer,BeetleStrategy> myBeetleStrategyHashMap;
-    HashMap<Integer,List<GameState>> myBeetleFoodPath;
+    HashMap<Integer,List<AttackGameState>> myBeetleFoodPath;
+    HashMap<Integer,List<AttackGameState>> myBeetleAttackPath;
     HashMap<Integer,List<BfsGameState>> myBeetleSlipperPath;
 
     HashMap<Integer,Move> moveLowUpdateHashMap; // store update function
     HashMap<Integer,Move> moveHighUpdateHashMap; // store update function
 
-    HashMap<Integer,Move> myBeetleMove; //move for each turn
+    HashMap<Integer,Move> myBeetleMove; //move for each beetle
 
     HashMap<Integer,List<Beetle>> lowBeetleStates =new HashMap<>(); //key is BeetleState
     HashMap<Integer,List<Beetle>> highBeetleStates =new HashMap<>(); //key is BeetleState , which high beetle in this state
 
+    static List<Cell>dangerCell =new ArrayList<>();
     int mapWidth;
     int mapHeight;
     World currentGame;
     public AI() {
         myBeetleFoodPath = new HashMap<>();
+        myBeetleAttackPath = new HashMap<>();
         myBeetleSlipperPath = new HashMap<>();
         moveLowUpdateHashMap = new HashMap<>();
         moveHighUpdateHashMap = new HashMap<>();
@@ -39,13 +41,24 @@ public class AI {
 
     public synchronized void doTurn(World game){
         currentGame =game;
-//        System.out.println("===============================  " +currentGame.getCurrentTurn()+"  ===============================");
+        System.out.println("===============================  " +currentGame.getCurrentTurn()+"  ===============================");
         if(currentGame.getCurrentTurn()==0){
             initializeGame();
         }
+        dangerCell = new ArrayList<>();
+        for (int i = 0; i < game.getMap().getOppCells().length; i++) {
+            dangerCell.add(game.getMap().getOppCells()[i]);
+            dangerCell.add(Utility.getLeft(game.getMap().getOppCells()[i],mapWidth));
+            dangerCell.add(Utility.getRight(game.getMap().getOppCells()[i],mapWidth));
+            dangerCell.add(Utility.getTop(game.getMap().getOppCells()[i],mapWidth));
+            dangerCell.add(Utility.getBottom(game.getMap().getOppCells()[i],mapWidth));
+        }
+
         myBeetleMove =new HashMap<>();
         lowBeetleStates = new HashMap<>();
         highBeetleStates = new HashMap<>();
+        Beetle attacker = getBestAttackerBeetle();
+
         for (int i = 0; i < currentGame.getMap().getMyCells().length; i++) {
             Beetle btl = (Beetle)currentGame.getMap().getMyCells()[i].getBeetle();
             myBeetleStrategyHashMap.put(btl.getId(),BeetleStrategy.Nothing);
@@ -71,34 +84,62 @@ public class AI {
 //                    System.out.println("slipper in my beetle don't find answere");
                 }
             }else{
-                findPathToFood(btl);
+                if(attacker.getId()==btl.getId()){
+                    Beetle preyBetle=getWeekestEnemy(attacker);
+                    if(preyBetle!=null) {
+                        Attack attackStrategy = new Attack(currentGame, attacker, preyBetle);
+                        attackStrategy.bfsSearch();
+                        if (attackStrategy.isExistAnswer()) {
+                            attackStrategy.printAnswer();
+//                        System.out.println("Attack");
+                            myBeetleStrategyHashMap.put(btl.getId(), BeetleStrategy.EnemyFollow);
+                            List<AttackGameState> states = attackStrategy.getAnswerList();
+                            if (states != null) {
+                                if (states.size() > 0) {
+                                    myBeetleAttackPath.put(btl.getId(), states);
+                                }
+                            }
+                        } else {
+                            findPathToFood(btl);
+                        }
+                    }else{
+                        findPathToFood(btl);
+                    }
+                }else {
+
+                    findPathToFood(btl);
+                }
+
             }
+
             //if new beetle created in hashmap not exist key and strategy
             if(!myBeetleStrategyHashMap.containsKey(btl.getId())){
                 myBeetleStrategyHashMap.put(btl.getId(),BeetleStrategy.Nothing);
             }
-
             Move btlMove = computeMove(btl);
-            if(btlMove==Move.stepForward && myBeetleStrategyHashMap.get(btl.getId())!=BeetleStrategy.SlipperBreak){
-                Cell nextCell = getPositionOfMoveForward(btl.getPosition().getX(),btl.getPosition().getY(),btl.getDirection());
-                if(isExistTrash(nextCell.getX(),nextCell.getY())){
-                    btlMove =Move.turnLeft; //TODO whyyyyyyyy choose better move
-                    myBeetleStrategyHashMap.put(btl.getId(),BeetleStrategy.TrashBreak);
-                }else if (isExistSlipper(nextCell.getX(),nextCell.getY())){
-                    btlMove =Move.turnLeft; //TODO whyyyyyyyy choose better move
-                    myBeetleStrategyHashMap.put(btl.getId(),BeetleStrategy.TrashBreak);
-                }else {
 
-                    int ownPower = btl.getPower();
-                    Cell cell = game.getMap().getCell(nextCell.getX(), nextCell.getY());
-                    if (cell.getBeetle() != null) {
-                        if (((Beetle) cell.getBeetle()).getTeam() == teamId) {
-                            ownPower += ((Beetle) cell.getBeetle()).getPower();
+            if(myBeetleStrategyHashMap.get(btl.getId())!=BeetleStrategy.EnemyFollow) {
+                if (btlMove == Move.stepForward && myBeetleStrategyHashMap.get(btl.getId()) != BeetleStrategy.SlipperBreak) {
+                    Cell nextCell = getPositionOfMoveForward(btl.getPosition().getX(), btl.getPosition().getY(), btl.getDirection());
+                    if (isExistTrash(nextCell.getX(), nextCell.getY())) {
+                        btlMove = getBestMoveByBreakEnemy(currentGame.getMap().getMyCells()[i], btl.getDirection()); //TODO whyyyyyyyy choose better move
+                        myBeetleStrategyHashMap.put(btl.getId(), BeetleStrategy.TrashBreak);
+                    } else if (isExistSlipper(nextCell.getX(), nextCell.getY())) {
+                        btlMove = getBestMoveByBreakEnemy(currentGame.getMap().getMyCells()[i], btl.getDirection()); //TODO whyyyyyyyy choose better move
+                        myBeetleStrategyHashMap.put(btl.getId(), BeetleStrategy.SlipperBreak);
+                    } else {
+
+                        int ownPower = btl.getPower();
+                        Cell cell = game.getMap().getCell(nextCell.getX(), nextCell.getY());
+                        if (cell.getBeetle() != null) {
+                            if (((Beetle) cell.getBeetle()).getTeam() == teamId) {
+                                ownPower += ((Beetle) cell.getBeetle()).getPower();
+                            }
                         }
-                    }
-                    if (ownPower < getPowerOfEnemyAroundPosition(nextCell.getX(), nextCell.getY())) { // if power of opponent grater than my beetle
-                        btlMove = Move.turnLeft; //TODO whyyyyyyyy choose better move
-                        myBeetleStrategyHashMap.put(btl.getId(), BeetleStrategy.EnemyBreak);
+                        if (ownPower < getPowerOfEnemyAroundPosition(nextCell.getX(), nextCell.getY())) { // if power of opponent grater than my beetle
+                            btlMove = getBestMoveByBreakEnemy(currentGame.getMap().getMyCells()[i], btl.getDirection()); //TODO whyyyyyyyy choose better move
+                            myBeetleStrategyHashMap.put(btl.getId(), BeetleStrategy.EnemyBreak);
+                        }
                     }
                 }
             }
@@ -192,8 +233,96 @@ public class AI {
                 }
             }
         }
-
     }
+    public Move getBestMoveByBreakEnemy(Cell cell,Direction currentDir){
+        if(currentDir ==Direction.Up){
+            Move move =Move.stepForward;
+            int max = 0;
+
+            int temp = getMaxDistanceWithDangerCell(Utility.getLeft(cell,mapWidth));
+            if(temp>max) {
+                max = temp;
+                move=Move.turnLeft;
+            }
+            temp = getMaxDistanceWithDangerCell(Utility.getRight(cell,mapWidth));
+            if(temp>max) {
+                max = temp;
+                move = Move.turnRight;
+            }
+            return move;
+        }else if(currentDir ==Direction.Down) {
+            Move move=Move.stepForward;
+            int max = 0;
+
+            int temp = getMaxDistanceWithDangerCell(Utility.getLeft(cell,mapWidth));
+            if(temp>max) {
+                max = temp;
+                move=Move.turnRight;
+            }
+            temp = getMaxDistanceWithDangerCell(Utility.getRight(cell,mapWidth));
+            if(temp>max) {
+                max = temp;
+                move = Move.turnLeft;
+            }
+            return move;
+        }
+        else if(currentDir ==Direction.Left) {
+            Move move=Move.stepForward;
+            int max = 0;
+            int temp = getMaxDistanceWithDangerCell(Utility.getBottom(cell,mapHeight));
+            if(temp>max){
+                max = temp;
+                move=Move.turnLeft;
+            }
+
+            temp = getMaxDistanceWithDangerCell(Utility.getTop(cell,mapHeight));
+            if(temp>max) {
+                max = temp;
+                move = Move.turnRight;
+            }
+            return move;
+        }else if(currentDir ==Direction.Right) {
+            Move move=Move.stepForward;
+            int max = 0;
+            int temp = getMaxDistanceWithDangerCell(Utility.getBottom(cell,mapHeight));
+            if(temp>max){
+                max = temp;
+                move=Move.turnRight;
+            }
+            temp = getMaxDistanceWithDangerCell(Utility.getTop(cell,mapHeight));
+            if(temp>max) {
+                max = temp;
+                move = Move.turnLeft;
+            }
+            return move;
+        }
+        return  Move.stepForward;
+    }
+    private int calculateManhatanDistance(Cell src,Cell des){
+        int bestDistance = 5*(mapHeight+mapWidth);
+//        System.out.println("GameState.calculate_manhatan_distance_with_food: foodList.size: "+foodList.size());
+        int diffX = Math.abs(src.getX() - des.getX());
+        diffX = Math.min(diffX,mapHeight-diffX);
+        int diffY = Math.abs(src.getY() - des.getY());
+        diffY = Math.min(diffY,mapWidth-diffY);
+        int distance = diffX+diffY;
+        if(distance<bestDistance)
+                bestDistance = distance;
+
+        return bestDistance;
+    }
+
+    public int getMaxDistanceWithDangerCell(Cell cell){
+        int min=mapWidth+mapHeight+100;
+        for (int i = 0; i < dangerCell.size(); i++) {
+            int temp =calculateManhatanDistance(cell,dangerCell.get(i));
+            if(temp<min){
+                min = temp;
+            }
+        }
+        return min;
+    }
+
 
 
     private int getPowerOfEnemyAroundPosition(int x, int y) {
@@ -325,7 +454,7 @@ public class AI {
 
         }
     }
-    public LinkedHashMap<Integer, Integer> sortHashMapByValues(HashMap<Integer, Integer> passedMap) {
+    static public LinkedHashMap<Integer, Integer> sortHashMapByValues(HashMap<Integer, Integer> passedMap) {
         List<Integer> mapKeys = new ArrayList<>(passedMap.keySet());
         List<Integer> mapValues = new ArrayList<>(passedMap.values());
         Collections.sort(mapValues);
@@ -421,7 +550,7 @@ public class AI {
 
             }
         }else if(strategy==BeetleStrategy.EatFood){
-            List<GameState> list =myBeetleFoodPath.get(btl.getId());
+            List<AttackGameState> list =myBeetleFoodPath.get(btl.getId());
             for (int i = 0; i < list.size()-1; i++) {
                 if(list.get(i).getBeetlePosY()==btl.getPosition().getY()
                         && list.get(i).getBeetlePosX()==btl.getPosition().getX()
@@ -430,12 +559,71 @@ public class AI {
                 }
 
             }
-        }else if(strategy==BeetleStrategy.EatFood){
-            // TODO move with nothing strategy for power
-            return Move.stepForward;
+        }else if(strategy==BeetleStrategy.EnemyFollow){
+            List<AttackGameState> list =myBeetleAttackPath.get(btl.getId());
+            for (int i = 0; i < list.size()-1; i++) {
+                if(list.get(i).getBeetlePosY()==btl.getPosition().getY()
+                        && list.get(i).getBeetlePosX()==btl.getPosition().getX()
+                        && list.get(i).getBeetleDir()==btl.getDirection()){
+                    return determineNextMove(list.get(i),list.get(i+1));
+                }
+
+            }
         }
         return Move.stepForward;
 
+    }
+
+    private Move determineNextMove(AttackGameState currentState, AttackGameState nextState) {
+        if(currentState.getBeetlePosX() == nextState.getBeetlePosX()
+                && currentState.getBeetlePosY() == nextState.getBeetlePosY()) { //yani charkhesh lazeme
+            switch (nextState.getBeetleDir()){
+                case Up:
+                    switch (currentState.getBeetleDir()){
+                        case Left:
+                            return Move.turnRight;
+                        case Right:
+                            return Move.turnLeft;
+                        case Down:
+                            return Move.turnRight;
+                    }
+                    break;
+                case Left:
+                    switch (currentState.getBeetleDir()){
+                        case Up:
+                            return Move.turnLeft;
+                        case Right:
+                            return Move.turnRight;
+                        case Down:
+                            return Move.turnRight;
+                    }
+                    break;
+                case Right:
+                    switch (currentState.getBeetleDir()){
+                        case Up:
+                            return Move.turnRight;
+                        case Left:
+                            return Move.turnRight;
+                        case Down:
+                            return Move.turnLeft;
+
+                    }
+                    break;
+                case Down:
+                    switch (currentState.getBeetleDir()){
+                        case Up:
+                            return Move.turnRight;
+                        case Left:
+                            return Move.turnLeft;
+                        case Right:
+                            return Move.turnRight;
+                    }
+                    break;
+            }
+
+        }
+
+        return Move.stepForward;
     }
 
     private  Slipper getSlipperOnBeetle(Beetle btl){
@@ -584,7 +772,7 @@ public class AI {
 
     }
     private void findPathToFood(Beetle btl){
-//        System.out.println("AI.findPathToFood: start for btl.id: "+btl.getId());
+//        System.out.println("AI2.findPathToFood: start for btl.id: "+btl.getId());
         HashMap<Integer,Food> foodList = new HashMap<>();
         HashMap<Integer,Integer> foodAgeList = new HashMap<>();
         for (int i = 0; i < currentGame.getMap().getFoodCells().length; i++) {
@@ -611,23 +799,34 @@ public class AI {
 
 
         if(btl!=null) {
-            GameState rootState = new GameState(currentGame, btl.getDirection(), btl.getPosition().getX()
-                    , btl.getPosition().getY(), 0, foodList, foodAgeList
-                    ,trashList,trashAgeList,slipperList,slipperAgeList, null);
-            AStarSearch search = new AStarSearch(rootState);
-            if(search.isExistAnswer()) {
-                myBeetleStrategyHashMap.put(btl.getId(),BeetleStrategy.EatFood);
-                List<GameState> states = search.getAnswerList();
+            EatFood eatFood = new EatFood(currentGame,btl);
+            eatFood.bfsSearch();
+            if(eatFood.isExistAnswer()){
+                List<AttackGameState> states = eatFood.getAnswerList();
                 if (states != null) {
                     if (states.size() > 0) {
+                        myBeetleStrategyHashMap.put(btl.getId(),BeetleStrategy.EatFood);
                         myBeetleFoodPath.put(btl.getId(), states);
                     }
                 }
             }
+//            GameState rootState = new GameState(currentGame, btl.getDirection(), btl.getPosition().getX()
+//                    , btl.getPosition().getY(), 0, foodList, foodAgeList
+//                    ,trashList,trashAgeList,slipperList,slipperAgeList, null);
+//            AStarSearch search = new AStarSearch(rootState);
+//            if(search.isExistAnswer()) {
+//                myBeetleStrategyHashMap.put(btl.getId(),BeetleStrategy.EatFood);
+//                List<GameState> states = search.getAnswerList();
+//                if (states != null) {
+//                    if (states.size() > 0) {
+//                        myBeetleFoodPath.put(btl.getId(), states);
+//                    }
+//                }
+//            }
         }
 
 
-//        System.out.println("AI.findPathToFood: end");
+//        System.out.println("AI2.findPathToFood: end");
     }
     private BeetleState calculateBeetleState(Beetle btl){
         CellState leftState =CellState.Blank;
@@ -680,9 +879,9 @@ public class AI {
         }else if(right.getY()==mapWidth){
             right.setY(0);
         }
-//        System.out.println("AI.calculateBeetleState: "+"btl.pos= "+btl.getPosition().getX() +","+btl.getPosition().getY());
-//        System.out.println("AI.calculateBeetleState: "+"left.pos= "+left.getX() +","+left.getY());
-//        System.out.println("AI.calculateBeetleState: "+"right.pos="+right.getX() +","+right.getY());
+//        System.out.println("AI2.calculateBeetleState: "+"btl.pos= "+btl.getPosition().getX() +","+btl.getPosition().getY());
+//        System.out.println("AI2.calculateBeetleState: "+"left.pos= "+left.getX() +","+left.getY());
+//        System.out.println("AI2.calculateBeetleState: "+"right.pos="+right.getX() +","+right.getY());
 
         Beetle leftBtl = (Beetle) currentGame.getMap().getCell(left.getX(),left.getY()).getBeetle();
         if(leftBtl!=null) {
@@ -825,5 +1024,37 @@ public class AI {
             worth*=9;
         return worth+btl.getPower();
 
+    }
+
+    private Beetle getBestAttackerBeetle(){
+        int power=-1;
+        Beetle bestBeetle=null;
+        for (int i = 0; i < currentGame.getMap().getMyCells().length; i++) {
+            Beetle btl =(Beetle) currentGame.getMap().getMyCells()[i].getBeetle();
+            if(btl!=null){
+                if (btl.getPower()>power){
+                    bestBeetle = btl;
+                    power = btl.getPower();
+                }
+            }
+        }
+        return bestBeetle;
+    }
+
+    private Beetle getWeekestEnemy(Beetle attacker){
+        HashMap<Integer,Integer> opponentDistance =new HashMap<>();
+        for (int i = 0; i < currentGame.getMap().getOppCells().length; i++) {
+            Beetle btl = (Beetle)currentGame.getMap().getOppCells()[i].getBeetle();
+            if(btl!=null){
+                opponentDistance.put(btl.getId(),calculateManhatanDistance(attacker.getPosition(),btl.getPosition()));
+            }
+        }
+        LinkedHashMap<Integer,Integer> sortedDistance = sortHashMapByValues(opponentDistance);
+        for (Integer key:sortedDistance.keySet()){
+            if(((Beetle)currentGame.getMap().getEntity(key)).getPower()*currentGame.getConstants().getPowerRatio() < attacker.getPower()){
+                return ((Beetle)currentGame.getMap().getEntity(key));
+            }
+        }
+        return null;
     }
 }

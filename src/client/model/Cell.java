@@ -144,13 +144,11 @@ public class Cell {
         this.foodEntity = foodEntity;
     }
 
-    Entity getTrashEntity() {
+    public Entity getTrashEntity() {
         return trashEntity;
     }
 
     void setTrashEntity(Entity trashEntity) {
         this.trashEntity = trashEntity;
     }
-
-
 }

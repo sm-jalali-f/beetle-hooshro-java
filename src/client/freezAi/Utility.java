@@ -51,5 +51,33 @@ public class Utility {
             return true;
         }
         return false;
-    } 
+    }
+    static public Cell getLeft(Cell cell,int mapWidth){
+        int tempX = cell.getX();
+        int tempY = cell.getY()-1;
+        if(tempY==-1)
+            tempY =mapWidth-1;
+        return new Cell(tempX,tempY);
+    }
+    static public Cell getRight(Cell cell,int mapWidth){
+        int tempX = cell.getX();
+        int tempY = cell.getY()+1;
+        if(tempY==mapWidth)
+            tempY =0;
+        return new Cell(tempX,tempY);
+    }
+    static public Cell getTop(Cell cell,int mapHeight){
+        int tempX = cell.getX()-1;
+        int tempY = cell.getY();
+        if(tempX==-1)
+            tempY =mapHeight-1;
+        return new Cell(tempX,tempY);
+    }
+    static public Cell getBottom(Cell cell,int mapHeight){
+        int tempX = cell.getX()+1;
+        int tempY = cell.getY();
+        if(tempX==mapHeight)
+            tempY =0;
+        return new Cell(tempX,tempY);
+    }
 }
