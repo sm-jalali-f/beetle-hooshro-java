@@ -39,9 +39,12 @@ public class AI {
 
     }
 
+    
     public synchronized void doTurn(World game){
         currentGame =game;
-        System.out.println("===============================  " +currentGame.getCurrentTurn()+"  ===============================");
+
+        System.out.println("==========================  " +currentGame.getCurrentTurn()+"  =====================");
+        System.out.println("==========================  pts: " +currentGame.getMyScore()+"  =====================");
         if(currentGame.getCurrentTurn()==0){
             initializeGame();
         }
@@ -116,18 +119,26 @@ public class AI {
             if(!myBeetleStrategyHashMap.containsKey(btl.getId())){
                 myBeetleStrategyHashMap.put(btl.getId(),BeetleStrategy.Nothing);
             }
-            Move btlMove = computeMove(btl);
-
-            if(myBeetleStrategyHashMap.get(btl.getId())!=BeetleStrategy.EnemyFollow) {
-                if (btlMove == Move.stepForward && myBeetleStrategyHashMap.get(btl.getId()) != BeetleStrategy.SlipperBreak) {
+//            Move btlMove = computeMove(btl);
+            myBeetleStrategyHashMap.put(btl.getId(),BeetleStrategy.Nothing);
+            Move btlMove = Move.stepForward;
+//            if(myBeetleStrategyHashMap.get(btl.getId())!=BeetleStrategy.EnemyFollow) {
+//                if (btlMove == Move.stepForward && myBeetleStrategyHashMap.get(btl.getId()) != BeetleStrategy.SlipperBreak) {
                     Cell nextCell = getPositionOfMoveForward(btl.getPosition().getX(), btl.getPosition().getY(), btl.getDirection());
-                    if (isExistTrash(nextCell.getX(), nextCell.getY())) {
-                        btlMove = getBestMoveByBreakEnemy(currentGame.getMap().getMyCells()[i], btl.getDirection()); //TODO whyyyyyyyy choose better move
-                        myBeetleStrategyHashMap.put(btl.getId(), BeetleStrategy.TrashBreak);
-                    } else if (isExistSlipper(nextCell.getX(), nextCell.getY())) {
+                    if (isExistSlipper(nextCell.getX(), nextCell.getY()) && !isExistSlipper(btl.getPosition().getX()
+                            ,btl.getPosition().getY())) {
                         btlMove = getBestMoveByBreakEnemy(currentGame.getMap().getMyCells()[i], btl.getDirection()); //TODO whyyyyyyyy choose better move
                         myBeetleStrategyHashMap.put(btl.getId(), BeetleStrategy.SlipperBreak);
-                    } else {
+//                    }
+//                    else if(isExistTrash(nextCell.getX(), nextCell.getY()) && isExistSlipper(btl.getPosition().getX()
+//                            ,btl.getPosition().getY())){
+//                        btlMove = getBestMoveByBreakEnemy(currentGame.getMap().getMyCells()[i], btl.getDirection()); //TODO whyyyyyyyy choose better move
+//                        myBeetleStrategyHashMap.put(btl.getId(), BeetleStrategy.TrashBreak);
+//
+                    } else if (isExistTrash(nextCell.getX(), nextCell.getY())) {
+                        btlMove = getBestMoveByBreakEnemy(currentGame.getMap().getMyCells()[i], btl.getDirection()); //TODO whyyyyyyyy choose better move
+                        myBeetleStrategyHashMap.put(btl.getId(), BeetleStrategy.TrashBreak);
+                    }  else {
 
                         int ownPower = btl.getPower();
                         Cell cell = game.getMap().getCell(nextCell.getX(), nextCell.getY());
@@ -141,8 +152,8 @@ public class AI {
                             myBeetleStrategyHashMap.put(btl.getId(), BeetleStrategy.EnemyBreak);
                         }
                     }
-                }
-            }
+//                }
+//            }
             myBeetleMove.put(btl.getId(),btlMove);
         }
 //        for (Integer btlId:myBeetleMove.keySet()){
@@ -152,6 +163,27 @@ public class AI {
         manageLowBeetleMovement();
         // set action for high beetles:
         manageHighBeetleMovement();
+//        for (int i = 0; i < game.getMap().getMyCells().length; i++) {
+//            Beetle btl = (Beetle)game.getMap().getMyCells()[i].getBeetle();
+//            if(btl.has_winge()) {
+//
+//                Move myBtlMove = myBeetleMove.get(btl.getId());
+//                BeetleState state = calculateBeetleState(btl);
+//                Move changeUpdate = null;
+//                if (btl.getBeetleType() == BeetleType.LOW) {
+//                    changeUpdate = moveLowUpdateHashMap.get(state.getValue());
+//                } else {
+//                    changeUpdate = moveHighUpdateHashMap.get(state.getValue());
+//                }
+//                if(changeUpdate!=null) {
+//                    if (myBtlMove != changeUpdate) {
+//                        System.out.println("determinestice move = " + myBtlMove);
+//                        game.deterministicMove(btl, myBtlMove);
+//                    }
+//                }
+//            }
+//
+//        }
 
         int normalLowBtl=0;
         int normalHighBtl=0;
@@ -996,33 +1028,34 @@ public class AI {
         return max;
     }
     private int getBeetleWorth(Beetle btl,int maxPower){
-        int worth =maxPower+1 ;
-        BeetleStrategy strategy =myBeetleStrategyHashMap.get(btl.getId());
-        switch (strategy){
-            case TrashBreak:
-                worth*=7;
-                break;
-            case SlipperBreak:
-                worth*=6;
-                break;
-            case EnemyBreak:
-                worth*=5;
-                break;
-            case EatFood:
-                worth*=4;
-                break;
-            case EnemyFollow:
-                worth*=3;
-                break;
-            case Nothing:
-                worth*=2;
-                break;
-        }
-        if(!btl.is_sick())
-            worth*=8;
-        if(!btl.has_winge())
-            worth*=9;
-        return worth+btl.getPower();
+        return btl.getPower();
+//        int worth =maxPower+1 ;
+//        BeetleStrategy strategy =myBeetleStrategyHashMap.get(btl.getId());
+//        switch (strategy){
+//            case TrashBreak:
+//                worth*=7;
+//                break;
+//            case SlipperBreak:
+//                worth*=6;
+//                break;
+//            case EnemyBreak:
+//                worth*=5;
+//                break;
+//            case EatFood:
+//                worth*=4;
+//                break;
+//            case EnemyFollow:
+//                worth*=3;
+//                break;
+//            case Nothing:
+//                worth*=2;
+//                break;
+//        }
+//        if(!btl.is_sick())
+//            worth*=8;
+//        if(btl.has_winge())
+//            worth*=9;
+//        return worth+btl.getPower();
 
     }
 
